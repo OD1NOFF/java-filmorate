@@ -2,6 +2,7 @@ package ru.yandex.practicum.filmorate.controller;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 
@@ -30,7 +31,7 @@ public class UserController {
     @PutMapping
     public User updateUser(@RequestBody User user) {
         if (!users.containsKey(user.getId())) {
-            throw new ValidationException("Пользователь с id " + user.getId() + " не найден");
+            throw new NotFoundException("Пользователь с id " + user.getId() + " не найден");
         }
         validateUser(user);
         if (user.getName() == null || user.getName().isBlank()) {
