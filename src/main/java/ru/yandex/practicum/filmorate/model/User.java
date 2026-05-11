@@ -8,7 +8,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Data
-public class User {
+public class User implements Identifiable{
     private int id;
 
     @NotBlank(message = "Электронная почта не может быть пустой")

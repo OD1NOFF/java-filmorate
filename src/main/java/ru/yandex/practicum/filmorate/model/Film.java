@@ -9,7 +9,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Data
-public class Film {
+public class Film implements Identifiable {
     private int id;
 
     @NotBlank(message = "Название фильма не может быть пустым")
