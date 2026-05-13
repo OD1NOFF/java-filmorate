@@ -5,9 +5,15 @@ import lombok.Data;
 import ru.yandex.practicum.filmorate.annotation.MinReleaseDate;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @Data
-public class Film {
+public class Film implements Identifiable {
+    private Mpa mpa;
+    private List<Genre> genres = new ArrayList<>();
     private int id;
 
     @NotBlank(message = "Название фильма не может быть пустым")
@@ -21,4 +27,6 @@ public class Film {
 
     @Positive(message = "Продолжительность фильма должна быть положительным числом")
     private int duration;
+
+    private Set<Integer> likes = new HashSet<>();
 }
