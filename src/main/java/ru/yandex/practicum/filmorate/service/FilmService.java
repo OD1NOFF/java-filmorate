@@ -1,7 +1,6 @@
 package ru.yandex.practicum.filmorate.service;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
@@ -12,6 +11,8 @@ import ru.yandex.practicum.filmorate.storage.mpa.MpaStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -21,7 +22,6 @@ public class FilmService {
     private final GenreStorage genreStorage;
     private final MpaStorage mpaStorage;
 
-    @Autowired
     public FilmService(FilmStorage filmStorage, UserStorage userStorage, GenreStorage genreStorage, MpaStorage mpaStorage) {
         this.filmStorage = filmStorage;
         this.userStorage = userStorage;
@@ -82,10 +82,13 @@ public class FilmService {
             mpaStorage.getById(film.getMpa().getId())
                     .orElseThrow(() -> new NotFoundException("MPA с id " + film.getMpa().getId() + " не найден"));
         }
-        if (film.getGenres() != null) {
-            for (Genre genre : film.getGenres()) {
-                genreStorage.getById(genre.getId())
-                        .orElseThrow(() -> new NotFoundException("Жанр с id " + genre.getId() + " не найден"));
+        if (film.getGenres() != null && !film.getGenres().isEmpty()) {
+            Set<Integer> ids = film.getGenres().stream()
+                    .map(Genre::getId)
+                    .collect(Collectors.toSet());
+            List<Genre> found = genreStorage.findByIds(ids);
+            if (found.size() != ids.size()) {
+                throw new NotFoundException("Один или несколько жанров не найдены");
             }
         }
     }

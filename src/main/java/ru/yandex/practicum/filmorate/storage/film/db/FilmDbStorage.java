@@ -2,6 +2,7 @@ package ru.yandex.practicum.filmorate.storage.film.db;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -12,12 +13,9 @@ import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.Mpa;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 
+import java.sql.*;
 import java.sql.Date;
-import java.sql.PreparedStatement;
-import java.sql.Statement;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
@@ -97,29 +95,7 @@ public class FilmDbStorage implements FilmStorage {
                 LEFT JOIN mpa m ON f.mpa_id = m.id
                 """;
 
-        List<Film> films = jdbcTemplate.query(sql, (rs, rowNum) -> {
-            Film film = new Film();
-
-            film.setId(rs.getInt("id"));
-            film.setName(rs.getString("name"));
-            film.setDescription(rs.getString("description"));
-            film.setReleaseDate(rs.getDate("release_date").toLocalDate());
-            film.setDuration(rs.getInt("duration"));
-
-            int mpaId = rs.getInt("mpa_id");
-
-            if (!rs.wasNull()) {
-                Mpa mpa = new Mpa();
-                mpa.setId(mpaId);
-                mpa.setName(rs.getString("mpa_name"));
-
-                film.setMpa(mpa);
-            }
-
-            film.setGenres(getGenresByFilmId(film.getId()));
-
-            return film;
-        });
+        List<Film> films = jdbcTemplate.query(sql, this::mapFilm);
 
         return films;
     }
@@ -135,70 +111,50 @@ public class FilmDbStorage implements FilmStorage {
                 WHERE f.id = ?
                 """;
 
-        List<Film> films = jdbcTemplate.query(sql, (rs, rowNum) -> {
-            Film film = new Film();
-
-            film.setId(rs.getInt("id"));
-            film.setName(rs.getString("name"));
-            film.setDescription(rs.getString("description"));
-            film.setReleaseDate(rs.getDate("release_date").toLocalDate());
-            film.setDuration(rs.getInt("duration"));
-
-            int mpaId = rs.getInt("mpa_id");
-
-            if (!rs.wasNull()) {
-                Mpa mpa = new Mpa();
-                mpa.setId(mpaId);
-                mpa.setName(rs.getString("mpa_name"));
-
-                film.setMpa(mpa);
-            }
-
-            film.setGenres(getGenresByFilmId(film.getId()));
-
-            return film;
-        }, id);
+        List<Film> films = jdbcTemplate.query(sql, this::mapFilm, id);
 
         return films.stream().findFirst();
     }
 
     private void saveGenres(Film film) {
-        if (film.getGenres() == null || film.getGenres().isEmpty()) {
-            return;
-        }
+        if (film.getGenres() == null || film.getGenres().isEmpty()) return;
 
         String sql = "INSERT INTO film_genres(film_id, genre_id) VALUES (?, ?)";
 
-        film.getGenres().stream()
+        List<Integer> genreIds = film.getGenres().stream()
                 .map(Genre::getId)
                 .distinct()
-                .forEach(genreId -> jdbcTemplate.update(sql, film.getId(), genreId));
-
-        List<Genre> deduplicated = film.getGenres().stream()
-                .collect(Collectors.toMap(Genre::getId, g -> g, (a, b) -> a))
-                .values().stream()
-                .sorted(Comparator.comparingInt(Genre::getId))
                 .collect(Collectors.toList());
-        film.setGenres(deduplicated);
+
+        jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
+            @Override
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                ps.setInt(1, film.getId());
+                ps.setInt(2, genreIds.get(i));
+            }
+
+            @Override
+            public int getBatchSize() {
+                return genreIds.size();
+            }
+        });
     }
 
-    private List<Genre> getGenresByFilmId(int filmId) {
+    private Set<Genre> getGenresByFilmId(int filmId) {
         String sql = """
-                SELECT g.id, g.name
-                FROM film_genres fg
-                JOIN genres g ON fg.genre_id = g.id
-                WHERE fg.film_id = ?
-                ORDER BY g.id
-                """;
+            SELECT g.id, g.name
+            FROM film_genres fg
+            JOIN genres g ON fg.genre_id = g.id
+            WHERE fg.film_id = ?
+            ORDER BY g.id
+            """;
 
-        return jdbcTemplate.query(sql, (rs, rowNum) -> {
+        return new LinkedHashSet<>(jdbcTemplate.query(sql, (rs, rowNum) -> {
             Genre genre = new Genre();
-
             genre.setId(rs.getInt("id"));
             genre.setName(rs.getString("name"));
-
             return genre;
-        }, filmId);
+        }, filmId));
     }
 
     @Override
@@ -243,5 +199,23 @@ public class FilmDbStorage implements FilmStorage {
         }
 
         return films;
+    }
+
+    private Film mapFilm(ResultSet rs, int rowNum) throws SQLException {
+        Film film = new Film();
+        film.setId(rs.getInt("id"));
+        film.setName(rs.getString("name"));
+        film.setDescription(rs.getString("description"));
+        film.setReleaseDate(rs.getDate("release_date").toLocalDate());
+        film.setDuration(rs.getInt("duration"));
+        int mpaId = rs.getInt("mpa_id");
+        if (!rs.wasNull()) {
+            Mpa mpa = new Mpa();
+            mpa.setId(mpaId);
+            mpa.setName(rs.getString("mpa_name"));
+            film.setMpa(mpa);
+        }
+        film.setGenres(getGenresByFilmId(film.getId()));
+        return film;
     }
 }
