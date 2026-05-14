@@ -1,21 +1,18 @@
 package ru.yandex.practicum.filmorate.service;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 public class UserService {
     private final UserStorage userStorage;
 
-    @Autowired
     public UserService(UserStorage userStorage) {
         this.userStorage = userStorage;
     }
@@ -45,34 +42,33 @@ public class UserService {
     }
 
     public void addFriend(int userId, int friendId) {
-        User user = getById(userId);
-        User friend = getById(friendId);
-        user.getFriends().add(friendId);
-        friend.getFriends().add(userId);
-        log.info("Пользователи {} и {} теперь друзья", userId, friendId);
+        getById(userId);
+        getById(friendId);
+
+        userStorage.addFriend(userId, friendId);
+
+        log.info("Пользователь {} добавил в друзья {}", userId, friendId);
     }
 
     public void removeFriend(int userId, int friendId) {
-        User user = getById(userId);
-        User friend = getById(friendId);
-        user.getFriends().remove(friendId);
-        friend.getFriends().remove(userId);
-        log.info("Пользователи {} и {} больше не друзья", userId, friendId);
+        getById(userId);
+        getById(friendId);
+
+        userStorage.removeFriend(userId, friendId);
+
+        log.info("Пользователь {} удалил из друзей {}", userId, friendId);
     }
 
     public List<User> getFriends(int userId) {
-        User user = getById(userId);
-        return user.getFriends().stream()
-                .map(this::getById)
-                .collect(Collectors.toList());
+        getById(userId);
+
+        return userStorage.getFriends(userId);
     }
 
     public List<User> getCommonFriends(int userId, int otherId) {
-        User user = getById(userId);
-        User other = getById(otherId);
-        return user.getFriends().stream()
-                .filter(other.getFriends()::contains)
-                .map(this::getById)
-                .collect(Collectors.toList());
+        getById(userId);
+        getById(otherId);
+
+        return userStorage.getCommonFriends(userId, otherId);
     }
 }

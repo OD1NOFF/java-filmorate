@@ -9,7 +9,7 @@ import java.util.Set;
 
 @Data
 public class User implements Identifiable {
-    private int id;
+    private Integer id;
 
     @NotBlank(message = "Электронная почта не может быть пустой")
     @Email(message = "Электронная почта должна быть корректной")

@@ -5,16 +5,13 @@ import lombok.Data;
 import ru.yandex.practicum.filmorate.annotation.MinReleaseDate;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @Data
 public class Film implements Identifiable {
     private Mpa mpa;
-    private List<Genre> genres = new ArrayList<>();
-    private int id;
+    private Set<Genre> genres = new LinkedHashSet<>();
+    private Integer id;
 
     @NotBlank(message = "Название фильма не может быть пустым")
     private String name;

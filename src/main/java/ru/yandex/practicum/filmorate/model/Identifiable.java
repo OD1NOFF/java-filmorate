@@ -2,7 +2,7 @@ package ru.yandex.practicum.filmorate.model;
 
 public interface Identifiable {
 
-    int getId();
+    Integer getId();
 
-    void setId(int id);
+    void setId(Integer id);
 }
